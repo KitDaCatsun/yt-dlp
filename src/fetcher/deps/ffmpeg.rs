@@ -5,10 +5,7 @@ use crate::fetcher::deps::{Asset, WantedRelease};
 use crate::utils::file_system;
 use crate::utils::platform::{Architecture, Platform};
 use derive_more::Display;
-use std::path::{Path, PathBuf};
-
-#[cfg(target_os = "windows")]
-const FFMPEG_BUILD_URL: &'static str = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+use std::path::PathBuf;
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 const FFMPEG_BUILD_URL: &'static str = "https://www.osxexperts.net/ffmpeg71intel.zip";
@@ -16,7 +13,8 @@ const FFMPEG_BUILD_URL: &'static str = "https://www.osxexperts.net/ffmpeg71intel
 const FFMPEG_BUILD_URL: &'static str = "https://www.osxexperts.net/ffmpeg71arm.zip";
 
 #[cfg(target_os = "linux")]
-const FFMPEG_BUILD_URL: &'static str = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-{}-static.tar.xz";
+const FFMPEG_BUILD_URL: &'static str =
+    "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-{}-static.tar.xz";
 
 /// The ffmpeg fetcher is responsible for fetching the ffmpeg binary for the current platform and architecture.
 /// It can also extract the binary from the downloaded archive.
@@ -140,7 +138,7 @@ impl BuildFetcher {
     /// The resulting binary will be placed in the same directory as the archive.
     /// The archive will be deleted after the binary has been extracted.
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "debug", skip(self)))]
-    pub async fn extract_binary(&self, archive: impl AsRef<Path>) -> Result<PathBuf> {
+    pub async fn extract_binary(&self, archive: PathBuf) -> Result<PathBuf> {
         #[cfg(feature = "tracing")]
         tracing::debug!("Extracting ffmpeg binary from archive: {:?}", archive);
 
@@ -164,7 +162,7 @@ impl BuildFetcher {
     #[cfg_attr(feature = "tracing", tracing::instrument(level = "debug", skip(self)))]
     pub async fn extract_binary_for_platform(
         &self,
-        archive: impl AsRef<Path>,
+        archive: PathBuf,
         platform: Platform,
         architecture: Architecture,
     ) -> Result<PathBuf> {
@@ -176,17 +174,20 @@ impl BuildFetcher {
             archive
         );
 
-        let destination = archive.as_ref().with_extension("");
+        let destination = archive.with_extension("");
 
-        #[cfg(target_os = "windows")] {
-            return self.extract_archive(archive, destination.clone()).await
+        #[cfg(target_os = "windows")]
+        {
+            return self.extract_archive(archive, destination.clone()).await;
         }
 
-        #[cfg(target_os = "macos")] {
-            return self.extract_archive(archive, destination.clone()).await
+        #[cfg(target_os = "macos")]
+        {
+            return self.extract_archive(archive, destination.clone()).await;
         }
 
-        #[cfg(target_os = "linux")] {
+        #[cfg(target_os = "linux")]
+        {
             let extracted = match architecture {
                 Architecture::X64 => "ffmpeg-7.0.2-amd64-static",
                 Architecture::X86 => "ffmpeg-7.0.2-i686-static",
@@ -195,13 +196,19 @@ impl BuildFetcher {
                 _ => return Err(Error::Binary(platform, architecture)),
             };
 
-            return self.extract_archive(archive, destination.clone(), extracted).await
+            return self
+                .extract_archive(archive, destination.clone(), extracted)
+                .await;
         }
     }
 
     #[cfg(target_os = "windows")]
-    pub async fn extract_archive(&self, archive: PathBuf, destination: impl AsRef<Path>) -> Result<PathBuf> {
-        file_system::extract_zip(archive.clone(), destination_clone).await?;
+    pub async fn extract_archive(
+        &self,
+        archive: PathBuf,
+        destination: PathBuf,
+    ) -> Result<PathBuf> {
+        file_system::extract_zip(archive.clone(), destination.clone()).await?;
 
         let extracted = destination.join("ffmpeg-7.1-essentials_build");
         let executable = extracted.join("bin").join("ffmpeg.exe");
@@ -217,7 +224,11 @@ impl BuildFetcher {
     }
 
     #[cfg(target_os = "macos")]
-    pub async fn extract_archive(&self, archive: impl AsRef<Path>, destination: impl AsRef<Path>) -> Result<PathBuf> {
+    pub async fn extract_archive(
+        &self,
+        archive: impl AsRef<Path>,
+        destination: impl AsRef<Path>,
+    ) -> Result<PathBuf> {
         file_system::extract_zip(&archive, &destination).await?;
 
         let executable = destination.as_ref().join("ffmpeg");
@@ -234,7 +245,12 @@ impl BuildFetcher {
     }
 
     #[cfg(target_os = "linux")]
-    pub async fn extract_archive(&self, archive: PathBuf, destination: PathBuf, extracted: impl AsRef<str>) -> Result<PathBuf> {
+    pub async fn extract_archive(
+        &self,
+        archive: PathBuf,
+        destination: PathBuf,
+        extracted: impl AsRef<str>,
+    ) -> Result<PathBuf> {
         file_system::extract_tar_xz(archive.clone(), destination.clone()).await?;
 
         let extracted = destination.join(extracted);

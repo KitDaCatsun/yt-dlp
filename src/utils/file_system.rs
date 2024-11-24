@@ -168,6 +168,7 @@ pub async fn extract_tar_xz(
 /// # Arguments
 ///
 /// * `executable` - The path to the executable file.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub fn set_executable(executable: impl AsRef<Path>) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
     let mut perms = std::fs::metadata(executable.as_ref())?.permissions();
